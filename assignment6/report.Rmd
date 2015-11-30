@@ -1,0 +1,80 @@
+---
+title: "Thefts are more common in San Francisco in weekends and in evening"
+author: "Larionova Anna"
+date: "30.11.2015"
+output: html_document
+---
+
+##Intro
+
+We will analyze crimes committed in San Francisco during summer 2014. We want to answer these questions: how do incidents vary by time of day? Which incidents are most common in the evening? During what periods of the day are robberies most common?
+
+##Data preparation
+
+###Switch on libraries
+
+```{r}
+setwd("E:/Personal/Repos/DS_at_scale/assignment6")
+library(chron)
+library(ggplot2)
+```
+
+###Take data
+
+```{r}
+sf_crime <- read.csv("sanfrancisco_incidents_summer_2014.csv")
+```
+
+###Mark out day time intervals
+
+Transform time series to categorical data by spliting time on four equal intervals, each interval is assigned to day time category: morning, day, evening and night as follows below
+
+```{r}
+sf_crime$Time1 <- chron(times. = paste0(as.character(sf_crime$Time), ":00", sep=""))
+sf_crime$DayTime <- ifelse(sf_crime$Time1 >= chron(times. = "00:00:00") & sf_crime$Time1 < chron(times. = "06:00:00"), "night", "")
+sf_crime$DayTime <- ifelse(sf_crime$Time1 > chron(times. = "18:00:00") & sf_crime$Time1 <= chron(times. = "23:59:00"), "evening", sf_crime$DayTime)
+sf_crime$DayTime <- ifelse(sf_crime$Time1 > chron(times. = "12:00:00") & sf_crime$Time1 <= chron(times. = "18:00:00"), "day", sf_crime$DayTime)
+sf_crime$DayTime <- ifelse(sf_crime$Time1 >= chron(times. = "06:00:00") & sf_crime$Time1 <= chron(times. = "12:00:00"), "morning", sf_crime$DayTime)
+sf_crime$DayTime <- as.factor(sf_crime$DayTime) 
+```
+
+##Graphics
+
+The first figure shows crime frequency by category for particular time of the day (morning, day, evening and night). Despite the common belief that most of the crimes occur at night the figure shows that in general most crimes occures in San Francisco between 12 - 18 hours (day), then comes evening, morning and the lats in night. However thefts occur a little more frequent in evening. This can be explained. Criminals are humans, they need a time to rest (and sleep), at night most people are a sleep, so crimes like assault, theft and some others are more difficult to commit because most of the victims are at home.
+
+```{r}
+crimes_daytime <- aggregate(sf_crime$Descript ~ sf_crime$Category + sf_crime$DayTime, data = sf_crime, length)
+names(crimes_daytime) <- c("Category", "DayTime", "Crime_frequency")
+head(crimes_daytime[order(-crimes_daytime$Crime_frequency),], 15)
+g1 <- ggplot(crimes_daytime, aes(x = crimes_daytime$Category, y = crimes_daytime$Crime_frequency, fill = crimes_daytime$DayTime)) + geom_histogram(binwidth = .5, alpha = .5, stat = "identity") + theme(axis.title = element_blank(), legend.position = "right", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + ggtitle("Crimes in San Francisco by time of the day")
+g1
+```
+
+The second figure shows number of crimes depending on the day of the week. It is clear to see that most crimes occur on Friday and weekends. Tuesday and Thursday are the least "criminal" days of the week.
+
+```{r}
+crime_by_weekday <- as.data.frame(summary(sf_crime$DayOfWeek))
+crime_by_weekday$WeekDay <- rownames(crime_by_weekday)
+names(crime_by_weekday) <- c("Crime_frequency", "WeekDay")
+crime_by_weekday <- crime_by_weekday[c(2, 6, 7, 5, 1, 3, 4),c(2, 1)]
+rownames(crime_by_weekday) <- NULL
+crime_by_weekday$WeekDay <- factor(crime_by_weekday$WeekDay, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+g2<- ggplot(crime_by_weekday, aes(x = factor(crime_by_weekday$WeekDay), y = crime_by_weekday$Crime_frequency)) + geom_histogram(binwidth = .5, alpha = .5, stat = "identity") + theme(axis.title = element_blank(), legend.position = "none", axis.text.x = element_text(angle = 0, hjust = 1, vjust = 0.5)) + ggtitle("Crimes in San Francisco by day of the week")
+g2
+
+```
+
+The third figure shows particular crimes by week day dependency. Just like in prevous graphcs we can see that most of the crimes occur on Friday, Saturday and Sunday. The most frequent crimes that occur during the week are assault, drug/narkotic, larceny/theft, vehicle theft, etc. Friday is the end of working week, people are likely to receive the paycheck and start shopping and entertaining, so the have money and things to steal, they end working earlier so more assaults can be committed in the same time interval. The weekends are the same: people likely to go out for entertainment and money spending.
+
+```{r}
+crimes_weekday <- aggregate(sf_crime$Descript ~ sf_crime$Category + sf_crime$DayOfWeek, data = sf_crime, length)
+names(crimes_weekday) <- c("Category", "WeekDay", "Crime_frequency")
+crimes_weekday$WeekDay <- factor(crimes_weekday$WeekDay, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+head(crimes_weekday[order(-crimes_weekday$Crime_frequency),], 15)
+g3 <- ggplot(crimes_weekday, aes(x = crimes_weekday$Category, y = crimes_weekday$Crime_frequency, fill = crimes_weekday$WeekDay)) + geom_histogram(binwidth = .5, alpha = .5, stat = "identity") + theme(axis.title = element_blank(), legend.position = "right", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + ggtitle("Crimes in San Francisco by type and day of the week")
+g3
+```
+
+##Conclution
+
+The most of crimes are committed during day or evening on Friday and weekends. The most safe time is night and workdays.

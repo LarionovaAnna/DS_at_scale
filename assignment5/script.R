@@ -1,5 +1,5 @@
 
-setwd("E:\Personal\Repos\DS_at_scale\assignment5")
+setwd("E:/Personal/Repos/DS_at_scale/assignment5")
 
 library(caret)
 library(rpart)
